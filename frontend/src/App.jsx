@@ -94,7 +94,10 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-      const key = e.key
+      // When Shift is held, e.key gives symbols ('!','@',…) — extract digit from e.code instead
+      const key = (e.shiftKey && e.code?.startsWith('Digit'))
+        ? e.code.replace('Digit', '')
+        : e.key
       if (!/^[1-9]$/.test(key)) return
       e.preventDefault()
 
