@@ -10,7 +10,7 @@ body {
 
 /* ── App layout ── */
 .app {
-  max-width: 860px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.25rem 3rem;
   display: flex;
@@ -46,6 +46,14 @@ body {
   transition: border-color 0.2s, background 0.2s;
   background: #131720;
   user-select: none;
+}
+
+.drop-zone.drop-zone-compact {
+  padding: 1.5rem 1rem;
+}
+
+.drop-zone.drop-zone-compact p {
+  font-size: 0.9rem;
 }
 
 .drop-zone:hover,
@@ -327,5 +335,102 @@ body {
   color: #445566;
   font-size: 0.78rem;
   padding-top: 0.5rem;
+}
+
+/* ── Tracks grid ── */
+.tracks-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Track player ── */
+.track-player {
+  background: #131720;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.track-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.track-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #c0d0e8;
+  letter-spacing: 0.3px;
+}
+
+.track-keys {
+  font-size: 0.78rem;
+  color: #607090;
+  background: #0d1019;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+}
+
+/* ── Track time + volume row ── */
+.track-time-volume {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ── Volume control ── */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: #2d4a7a;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a9eff;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a9eff;
+  border: none;
+  cursor: pointer;
+}
+
+.volume-value {
+  font-size: 0.78rem;
+  color: #8899bb;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5rem;
+}
+
+/* ── Track markers ── */
+.track-markers {
+  border-top: 1px solid #1e2d45;
+  padding-top: 0.6rem;
 }
 
