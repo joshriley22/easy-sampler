@@ -41,6 +41,9 @@ const DUCK_RETURN_S = 0.4      // time to return to full volume
 // Feature peek duration: how long (ms) to collect analyser data before scheduling fade-in
 const FEATURE_PEEK_MS = 200
 
+// Maximum distance (seconds) from a beat for end-marker beat-snapping to apply
+const END_MARKER_BEAT_SNAP_THRESHOLD_S = 1
+
 function pickLayerParams(featuresB) {
   const { rms: rmsB, flux: fluxB } = featuresB
   // Percussive (high flux) → short fade, minimal duck
@@ -420,7 +423,9 @@ const TrackPlayer = forwardRef(function TrackPlayer(
 
       if (existing && existing.end === null) {
         // Start already set — this click sets the end
-        if (clickedTime <= existing.start) {
+        // Snap to beat only if the nearest beat is within 1 second of where the user clicked
+        const endTime = Math.abs(clickedTime - rawTime) <= END_MARKER_BEAT_SNAP_THRESHOLD_S ? clickedTime : rawTime
+        if (endTime <= existing.start) {
           setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Click at a later time position.`)
           return
         }
@@ -432,17 +437,17 @@ const TrackPlayer = forwardRef(function TrackPlayer(
         regions.addRegion({
           id: `marker-${key}`,
           start: existing.start,
-          end: clickedTime,
+          end: endTime,
           color: MARKER_COLORS[parseInt(key)],
           content: key,
           drag: false,
           resize: false,
         })
 
-        const updated = { ...markersRef.current, [key]: { start: existing.start, end: clickedTime } }
+        const updated = { ...markersRef.current, [key]: { start: existing.start, end: endTime } }
         markersRef.current = updated
         setMarkers({ ...updated })
-        setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(clickedTime)}. Press ${key} to jump and loop.`)
+        setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(endTime)}. Press ${key} to jump and loop.`)
       } else {
         // No marker or complete marker — set new start, clear end
         regions.getRegions().forEach((r) => {
