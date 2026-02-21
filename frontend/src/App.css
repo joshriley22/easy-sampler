@@ -428,6 +428,24 @@ body {
   min-width: 2.5rem;
 }
 
+/* ── Global recording ── */
+.global-recording {
+  background: #131720;
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.global-recording-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #c0d0e8;
+  letter-spacing: 0.3px;
+}
+
 /* ── Track markers ── */
 .track-markers {
   border-top: 1px solid #1e2d45;
