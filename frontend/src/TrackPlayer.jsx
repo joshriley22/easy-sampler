@@ -61,6 +61,65 @@ function equalPowerCurve(steps) {
   return arr
 }
 
+// ── Beat detection ──
+const BEAT_ONSET_THRESHOLD = 1.3  // flux must exceed local average by this factor
+const BEAT_HOP_SIZE_S = 0.01      // 10 ms hop size for beat analysis
+const BEAT_FRAME_SIZE = 1024      // samples per analysis frame
+const MIN_BEAT_SPACING_S = 0.2    // minimum 200 ms between detected beats
+
+function snapToBeat(time, beats) {
+  if (!beats || beats.length === 0) return time
+  let closest = beats[0]
+  let minDist = Math.abs(time - beats[0])
+  for (const beat of beats) {
+    const dist = Math.abs(time - beat)
+    if (dist < minDist) {
+      minDist = dist
+      closest = beat
+    }
+  }
+  return closest
+}
+
+async function detectBeats(file, audioCtx) {
+  const arrayBuffer = await file.arrayBuffer()
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+  // Analyze channel 0 only; mono analysis is sufficient for onset/energy detection
+  const channelData = audioBuffer.getChannelData(0)
+  const sampleRate = audioBuffer.sampleRate
+  const hopSize = Math.round(sampleRate * BEAT_HOP_SIZE_S)
+  const frameSize = BEAT_FRAME_SIZE
+  const localFluxWindow = []
+  // ~430 ms of context for adaptive threshold, derived from hop size
+  const LOCAL_WINDOW_FRAMES = Math.round(0.43 / BEAT_HOP_SIZE_S)
+  const beats = []
+  let prevEnergy = 0
+
+  for (let i = 0; i + frameSize < channelData.length; i += hopSize) {
+    let energy = 0
+    for (let j = 0; j < frameSize; j++) {
+      energy += channelData[i + j] ** 2
+    }
+    energy /= frameSize
+
+    const flux = Math.max(0, energy - prevEnergy)
+    prevEnergy = energy
+
+    localFluxWindow.push(flux)
+    if (localFluxWindow.length > LOCAL_WINDOW_FRAMES) localFluxWindow.shift()
+    const localAvg = localFluxWindow.reduce((a, b) => a + b, 0) / localFluxWindow.length
+
+    if (flux > localAvg * BEAT_ONSET_THRESHOLD) {
+      const time = i / sampleRate
+      if (beats.length === 0 || time - beats[beats.length - 1] > MIN_BEAT_SPACING_S) {
+        beats.push(time)
+      }
+    }
+  }
+
+  return beats
+}
+
 const TrackPlayer = forwardRef(function TrackPlayer(
   { trackIndex, assignedKeys, label, getAudioContext, getMasterGain, onLayerTrigger },
   ref
@@ -72,6 +131,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   const markersRef = useRef({})
   const lastInteractionRef = useRef({ time: 0, timestamp: 0 })
   const activeLoopRef = useRef(null)
+  const beatsRef = useRef([])
   const isLoadedRef = useRef(false)
   const volumeRef = useRef(1)
   const autoGainRef = useRef(null)     // automation gain (duck/fade)
@@ -223,6 +283,14 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       setDuration(ws.getDuration())
       setCurrentTime(0)
       setStatus(`File loaded. Click waveform then press ${assignedKeysRef.current.join('/')} to set start/end markers.`)
+
+      // Detect beat positions for snap-to-beat behaviour
+      detectBeats(audioFile, audioCtx).then((beats) => {
+        beatsRef.current = beats
+      }).catch((err) => {
+        console.warn('Beat detection failed; snap-to-beat disabled.', err)
+        beatsRef.current = []
+      })
     })
 
     ws.on('play', () => setIsPlaying(true))
@@ -245,7 +313,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
           autoGain.gain.linearRampToValueAtTime(0, now + 0.02)
           
           setTimeout(() => {
-            ws.setTime(marker.start)
+            const snappedStart = snapToBeat(marker.start, beatsRef.current)
+            ws.setTime(snappedStart)
             const nowAfter = audioCtx.currentTime
             const steps = Math.max(2, Math.round(fadeSec * 100))
             autoGain.gain.cancelScheduledValues(nowAfter)
@@ -384,12 +453,13 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       // ── PLACE / UPDATE MARKER ──
       const clickedTime = lastInteractionRef.current.timestamp
       lastInteractionRef.current = { time: 0, timestamp: 0 }
+      const snappedTime = snapToBeat(clickedTime, beatsRef.current)
 
       const existing = markersRef.current[key]
 
       if (existing && existing.end === null) {
         // Start already set — this click sets the end
-        if (clickedTime <= existing.start) {
+        if (snappedTime <= existing.start) {
           setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Click at a later time position.`)
           return
         }
@@ -401,17 +471,17 @@ const TrackPlayer = forwardRef(function TrackPlayer(
         regions.addRegion({
           id: `marker-${key}`,
           start: existing.start,
-          end: clickedTime,
+          end: snappedTime,
           color: MARKER_COLORS[parseInt(key)],
           content: key,
           drag: false,
           resize: false,
         })
 
-        const updated = { ...markersRef.current, [key]: { start: existing.start, end: clickedTime } }
+        const updated = { ...markersRef.current, [key]: { start: existing.start, end: snappedTime } }
         markersRef.current = updated
         setMarkers({ ...updated })
-        setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(clickedTime)}. Press ${key} to jump and loop.`)
+        setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(snappedTime)}. Press ${key} to jump and loop.`)
       } else {
         // No marker or complete marker — set new start, clear end
         regions.getRegions().forEach((r) => {
@@ -422,18 +492,18 @@ const TrackPlayer = forwardRef(function TrackPlayer(
 
         regions.addRegion({
           id: `marker-${key}`,
-          start: clickedTime,
-          end: clickedTime + 0.25,
+          start: snappedTime,
+          end: snappedTime + 0.25,
           color: MARKER_COLORS[parseInt(key)],
           content: key,
           drag: false,
           resize: false,
         })
 
-        const updated = { ...markersRef.current, [key]: { start: clickedTime, end: null } }
+        const updated = { ...markersRef.current, [key]: { start: snappedTime, end: null } }
         markersRef.current = updated
         setMarkers({ ...updated })
-        setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}. Click another spot and press ${key} again to set the end marker.`)
+        setStatus(`Marker ${key} start set at ${formatTime(snappedTime)}. Click another spot and press ${key} again to set the end marker.`)
       }
     } else if (markersRef.current[key] !== undefined) {
       // ── LAYER TRIGGER: jump to marker, fade in, duck others ──
@@ -483,6 +553,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     setMarkers({})
     markersRef.current = {}
     activeLoopRef.current = null
+    beatsRef.current = []
     setDuration(0)
     setCurrentTime(0)
     setStatus('Loading waveform…')
@@ -511,6 +582,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     stopFeatureExtraction()
     autoGainRef.current = null
     analyserRef.current = null
+    beatsRef.current = []
     setAudioFile(null)
     setIsLoaded(false)
     setIsPlaying(false)
