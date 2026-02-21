@@ -20,7 +20,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The FastAPI server runs on <http://localhost:8000>.
+The FastAPI server runs on <http://easy-sampler-production.up.railway.app>.
 
 ### Frontend
 
@@ -30,7 +30,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server runs on <http://localhost:5173> and proxies `/api` requests to the FastAPI backend.
+The Vite dev server runs on <http://easy-sampler.vercel.app> and proxies `/api` requests to the FastAPI backend.
 
 ## How to Use
 
