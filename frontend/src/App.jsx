@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import TrackPlayer from './TrackPlayer'
+import CommunityPage from './CommunityPage'
 import './App.css'
 
 const TRACKS = [
@@ -15,6 +16,7 @@ const KEY_TO_TRACK = {
 }
 
 function App() {
+  const [page, setPage] = useState('sampler')
   const track0Ref = useRef(null)
   const track1Ref = useRef(null)
   const track2Ref = useRef(null)
@@ -117,46 +119,69 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>🎛 Easy Sampler</h1>
-        <p className="subtitle">
-          Load up to 3 MP3s and play them simultaneously. Keys 1–3 → Track 1 · 4–6 → Track 2 · 7–9 → Track 3.
-          Triggering a marker layers that track in (with smart fade + global duck).
-        </p>
+        <nav className="app-nav">
+          <button
+            className={`app-nav-btn${page === 'sampler' ? ' active' : ''}`}
+            onClick={() => setPage('sampler')}
+          >
+            🎚 Sampler
+          </button>
+          <button
+            className={`app-nav-btn${page === 'community' ? ' active' : ''}`}
+            onClick={() => setPage('community')}
+          >
+            🌐 Community
+          </button>
+        </nav>
       </header>
 
-      <div className="tracks-grid">
-        {TRACKS.map((t, i) => (
-          <TrackPlayer
-            key={i}
-            ref={[track0Ref, track1Ref, track2Ref][i]}
-            trackIndex={i}
-            assignedKeys={t.keys}
-            label={t.label}
-            getAudioContext={getAudioContext}
-            getMasterGain={getMasterGain}
-            onLayerTrigger={(featuresB) => onLayerTrigger(i, featuresB)}
-          />
-        ))}
-      </div>
+      {page === 'community' ? (
+        <main aria-live="polite">
+          <CommunityPage />
+        </main>
+      ) : (
+        <main aria-live="polite">
+          <p className="subtitle">
+            Load up to 3 MP3s and play them simultaneously. Keys 1–3 → Track 1 · 4–6 → Track 2 · 7–9 → Track 3.
+            Triggering a marker layers that track in (with smart fade + global duck).
+          </p>
 
-      <div className="global-recording">
-        <span className="global-recording-label">🎙 Master Mix</span>
-        <div className="controls">
-          {!isRecording ? (
-            <button className="btn btn-record" onClick={startRecording}>
-              ⏺ Record
-            </button>
-          ) : (
-            <button className="btn btn-stop-record" onClick={stopRecording}>
-              ⏹ Stop Rec
-            </button>
-          )}
-          {recordingBlob && (
-            <button className="btn btn-download" onClick={downloadRecording}>
-              ⬇ Download Mix
-            </button>
-          )}
-        </div>
-      </div>
+          <div className="tracks-grid">
+            {TRACKS.map((t, i) => (
+              <TrackPlayer
+                key={i}
+                ref={[track0Ref, track1Ref, track2Ref][i]}
+                trackIndex={i}
+                assignedKeys={t.keys}
+                label={t.label}
+                getAudioContext={getAudioContext}
+                getMasterGain={getMasterGain}
+                onLayerTrigger={(featuresB) => onLayerTrigger(i, featuresB)}
+              />
+            ))}
+          </div>
+
+          <div className="global-recording">
+            <span className="global-recording-label">🎙 Master Mix</span>
+            <div className="controls">
+              {!isRecording ? (
+                <button className="btn btn-record" onClick={startRecording}>
+                  ⏺ Record
+                </button>
+              ) : (
+                <button className="btn btn-stop-record" onClick={stopRecording}>
+                  ⏹ Stop Rec
+                </button>
+              )}
+              {recordingBlob && (
+                <button className="btn btn-download" onClick={downloadRecording}>
+                  ⬇ Download Mix
+                </button>
+              )}
+            </div>
+          </div>
+        </main>
+      )}
 
       <footer className="app-footer">
         <p>Powered by WaveSurfer.js · FastAPI · React</p>
