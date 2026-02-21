@@ -414,7 +414,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     } else if (markersRef.current[key] !== undefined) {
       // ── LAYER TRIGGER: jump to marker, fade in, duck others ──
       const marker = markersRef.current[key]
-      activeLoopRef.current = null
+      activeLoopRef.current = marker.end !== null ? key : null
       triggerLayer(marker.start)
       setStatus(`Layering in at marker ${key} (${formatTime(marker.start)}) — fading in, ducking others.`)
     } else {
