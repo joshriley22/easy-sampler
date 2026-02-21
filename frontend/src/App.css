@@ -337,6 +337,90 @@ body {
   padding-top: 0.5rem;
 }
 
+/* ── App nav ── */
+.app-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.app-nav-btn {
+  padding: 0.45rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #2d4a7a;
+  background: #1c2537;
+  color: #8899bb;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.app-nav-btn:hover {
+  background: #253350;
+  border-color: #4a9eff;
+  color: #d0dcf0;
+}
+
+.app-nav-btn.active {
+  background: #1a4a8a;
+  border-color: #4a9eff;
+  color: #e0eaff;
+}
+
+/* ── Community page ── */
+.community-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.community-heading {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #c0d0e8;
+  letter-spacing: 0.3px;
+}
+
+.community-subtitle {
+  color: #8899bb;
+  font-size: 0.9rem;
+  margin-top: -0.5rem;
+}
+
+.community-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.community-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #131720;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  gap: 1rem;
+}
+
+.community-entry-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #c0d0e8;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-entry-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 /* ── Tracks grid ── */
 .tracks-grid {
   display: flex;
