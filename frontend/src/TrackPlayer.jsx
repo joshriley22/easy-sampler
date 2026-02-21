@@ -233,8 +233,32 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       const loopKey = activeLoopRef.current
       if (loopKey !== null && ws.isPlaying()) {
         const marker = markersRef.current[loopKey]
-        if (marker && marker.end !== null && t >= marker.end) {
-          ws.setTime(marker.start)
+        const autoGain = autoGainRef.current
+        if (marker && marker.end !== null && autoGain && t >= marker.end - 0.05) {
+          const featuresB = { ...featuresRef.current }
+          const { fadeInMs, layerLevel, curve } = pickLayerParams(featuresB)
+          const fadeSec = fadeInMs / 1000
+          
+          const now = audioCtx.currentTime
+          autoGain.gain.cancelScheduledValues(now)
+          autoGain.gain.setValueAtTime(autoGain.gain.value, now)
+          autoGain.gain.linearRampToValueAtTime(0, now + 0.02)
+          
+          setTimeout(() => {
+            ws.setTime(marker.start)
+            const nowAfter = audioCtx.currentTime
+            const steps = Math.max(2, Math.round(fadeSec * 100))
+            autoGain.gain.cancelScheduledValues(nowAfter)
+            autoGain.gain.setValueAtTime(0, nowAfter)
+            
+            if (curve === 'equalPower') {
+              const curveArr = equalPowerCurve(steps)
+              for (let i = 0; i < steps; i++) curveArr[i] *= layerLevel
+              autoGain.gain.setValueCurveAtTime(curveArr, nowAfter, fadeSec)
+            } else {
+              autoGain.gain.linearRampToValueAtTime(layerLevel, nowAfter + fadeSec)
+            }
+          }, 20)
         }
       }
     })
