@@ -1,4 +1,6 @@
-# Byte-compiled / optimized / DLL files
+# easy-sampler
+
+# Python
 __pycache__/
 *.py[codz]
 *$py.class
@@ -205,3 +207,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend uploaded files
+backend/uploads/

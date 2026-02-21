@@ -1,0 +1,331 @@
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0d0f14;
+  color: #e0e4f0;
+  min-height: 100vh;
+}
+
+/* ── App layout ── */
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ── Header ── */
+.app-header {
+  text-align: center;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #4a9eff;
+}
+
+.subtitle {
+  margin-top: 0.35rem;
+  color: #8899bb;
+  font-size: 0.9rem;
+}
+
+/* ── Drop Zone ── */
+.drop-zone {
+  border: 2px dashed #2d4a7a;
+  border-radius: 14px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #131720;
+  user-select: none;
+}
+
+.drop-zone:hover,
+.drop-zone:focus {
+  border-color: #4a9eff;
+  background: #171f30;
+  outline: none;
+}
+
+.drop-zone.dragging {
+  border-color: #4a9eff;
+  background: #1a2840;
+}
+
+.drop-zone-icon {
+  font-size: 2.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.drop-zone p {
+  color: #c0ccdd;
+  font-size: 1.1rem;
+}
+
+.drop-zone-hint {
+  margin-top: 0.4rem;
+  font-size: 0.85rem !important;
+  color: #607090 !important;
+}
+
+/* ── Player section ── */
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #131720;
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+.file-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: #aabbcc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+/* ── Waveform ── */
+.waveform-wrapper {
+  background: #0d1019;
+  border-radius: 10px;
+  padding: 0.5rem 0;
+  overflow: hidden;
+}
+
+.waveform {
+  width: 100%;
+}
+
+/* WaveSurfer region label */
+.waveform-wrapper wave region span {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  text-shadow: 0 0 4px #000;
+  padding: 2px 4px;
+}
+
+/* ── Time display ── */
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: #8899bb;
+}
+
+.time-sep { color: #445566; }
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ── */
+.btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid #2d4a7a;
+  background: #1c2537;
+  color: #d0dcf0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.btn:hover:not(:disabled) {
+  background: #253350;
+  border-color: #4a9eff;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #1a4a8a;
+  border-color: #2a5eaa;
+  color: #e0eaff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1e5aa8;
+}
+
+.btn-primary.active {
+  background: #1a3560;
+  border-color: #3a6ecc;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: #607090;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: #c0ccdd;
+  background: #1c2537;
+  border-color: #2d4a7a;
+}
+
+.btn-record {
+  background: #6b1a1a;
+  border-color: #aa3333;
+  color: #ffcccc;
+}
+
+.btn-record:hover:not(:disabled) {
+  background: #832020;
+  border-color: #cc4444;
+}
+
+.btn-stop-record {
+  background: #8b4000;
+  border-color: #cc6600;
+  color: #ffe0bb;
+  animation: pulse-record 1.2s infinite;
+}
+
+@keyframes pulse-record {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.btn-download {
+  background: #145a14;
+  border-color: #228b22;
+  color: #ccffcc;
+}
+
+.btn-download:hover:not(:disabled) {
+  background: #1a7a1a;
+  border-color: #33aa33;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  font-size: 0.82rem;
+  color: #7a99cc;
+  background: #0d1019;
+  border-radius: 7px;
+  padding: 0.45rem 0.8rem;
+  min-height: 2rem;
+  line-height: 1.4;
+}
+
+/* ── Recording section ── */
+.recording-section {
+  border-top: 1px solid #1e2d45;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.recording-section h3,
+.marker-section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #c0d0e8;
+  letter-spacing: 0.3px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #607090;
+  line-height: 1.5;
+}
+
+/* ── Marker section ── */
+.marker-section {
+  background: #131720;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.marker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.marker-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #0d1019;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.marker-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+
+.marker-time {
+  color: #aabbcc;
+  font-variant-numeric: tabular-nums;
+}
+
+.marker-remove {
+  background: none;
+  border: none;
+  color: #607090;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  font-family: inherit;
+}
+
+.marker-remove:hover { color: #ff6060; }
+
+/* ── Footer ── */
+.app-footer {
+  text-align: center;
+  color: #445566;
+  font-size: 0.78rem;
+  padding-top: 0.5rem;
+}
+
