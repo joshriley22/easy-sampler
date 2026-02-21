@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHand
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import WebAudioPlayer from 'wavesurfer.js/dist/webaudio.js'
+import { guess } from 'web-audio-beat-detector'
 
 const MARKER_COLORS = [
   'rgba(255, 99, 71, 0.55)',
@@ -91,6 +92,11 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   useEffect(() => { getMasterGainRef.current = getMasterGain }, [getMasterGain])
   useEffect(() => { onLayerTriggerRef.current = onLayerTrigger }, [onLayerTrigger])
 
+  // Beat detection state
+  const bpmRef = useRef(null)
+  const beatOffsetRef = useRef(0)
+  const [detectedBpm, setDetectedBpm] = useState(null)
+
   const [audioFile, setAudioFile] = useState(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -102,6 +108,15 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   const [status, setStatus] = useState(`Drop or select an MP3 for ${label}.`)
 
   useEffect(() => { isLoadedRef.current = isLoaded }, [isLoaded])
+
+  // ── Beat-snap: round time to nearest beat given current BPM/offset ──
+  const snapToBeat = useCallback((time) => {
+    const bpm = bpmRef.current
+    if (!bpm) return time
+    const beatLen = 60 / bpm
+    const beats = (time - beatOffsetRef.current) / beatLen
+    return beatOffsetRef.current + Math.round(beats) * beatLen
+  }, [])
 
   // ── Feature extraction loop ──
   const stopFeatureExtraction = useCallback(() => {
@@ -223,6 +238,21 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       setDuration(ws.getDuration())
       setCurrentTime(0)
       setStatus(`File loaded. Click waveform then press ${assignedKeysRef.current.join('/')} to set start/end markers.`)
+
+      // Run beat detection on the decoded audio buffer
+      const audioBuffer = ws.getDecodedData()
+      if (audioBuffer) {
+        guess(audioBuffer)
+          .then(({ bpm, offset }) => {
+            bpmRef.current = bpm
+            beatOffsetRef.current = offset
+            setDetectedBpm(Math.round(bpm))
+          })
+          .catch(() => {
+            // Beat detection failed — continue without snapping
+            bpmRef.current = null
+          })
+      }
     })
 
     ws.on('play', () => setIsPlaying(true))
@@ -382,7 +412,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
 
     if (timeSinceCursor < 1500) {
       // ── PLACE / UPDATE MARKER ──
-      const clickedTime = lastInteractionRef.current.timestamp
+      const rawTime = lastInteractionRef.current.timestamp
+      const clickedTime = snapToBeat(rawTime)
       lastInteractionRef.current = { time: 0, timestamp: 0 }
 
       const existing = markersRef.current[key]
@@ -433,7 +464,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
         const updated = { ...markersRef.current, [key]: { start: clickedTime, end: null } }
         markersRef.current = updated
         setMarkers({ ...updated })
-        setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}. Click another spot and press ${key} again to set the end marker.`)
+        setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}${bpmRef.current ? ` (beat-snapped, ${bpmRef.current} BPM)` : ''}. Click another spot and press ${key} again to set the end marker.`)
       }
     } else if (markersRef.current[key] !== undefined) {
       // ── LAYER TRIGGER: jump to marker, fade in, duck others ──
@@ -444,7 +475,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     } else {
       setStatus(`No marker on key ${key} yet. Click waveform then press ${key} to place a start marker.`)
     }
-  }, [triggerLayer]) // triggerLayer is stable (no deps), safe to include
+  }, [triggerLayer, snapToBeat]) // triggerLayer and snapToBeat are stable (no deps), safe to include
 
   useImperativeHandle(ref, () => ({ handleKey, duck }), [handleKey, duck])
 
@@ -485,6 +516,9 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     activeLoopRef.current = null
     setDuration(0)
     setCurrentTime(0)
+    bpmRef.current = null
+    beatOffsetRef.current = 0
+    setDetectedBpm(null)
     setStatus('Loading waveform…')
     setAudioFile(file)
   }
@@ -511,6 +545,9 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     stopFeatureExtraction()
     autoGainRef.current = null
     analyserRef.current = null
+    bpmRef.current = null
+    beatOffsetRef.current = 0
+    setDetectedBpm(null)
     setAudioFile(null)
     setIsLoaded(false)
     setIsPlaying(false)
@@ -572,6 +609,11 @@ const TrackPlayer = forwardRef(function TrackPlayer(
               <span className="time-sep">/</span>
               <span>{formatTime(duration)}</span>
             </div>
+            {detectedBpm !== null && (
+              <div className="bpm-display" title="Detected BPM — markers will snap to the nearest beat">
+                🥁 {detectedBpm} BPM
+              </div>
+            )}
             <div className="volume-control">
               <label htmlFor={`volume-${trackIndex}`}>🔊</label>
               <input

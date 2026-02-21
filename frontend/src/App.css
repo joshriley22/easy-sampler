@@ -391,6 +391,17 @@ body {
   gap: 0.45rem;
 }
 
+/* ── BPM display ── */
+.bpm-display {
+  font-size: 0.8rem;
+  color: #8899bb;
+  background: #1a2035;
+  border: 1px solid #2d4a7a;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  cursor: default;
+}
+
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
