@@ -340,7 +340,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     const shiftKey = typeof input === 'string' ? false : !!input.shiftKey
 
     if (shiftKey) {
-      ws.pause()
+      ws.stop()
       activeLoopRef.current = null
       // Reset autoGain to 1 when stopped
       const autoGain = autoGainRef.current
