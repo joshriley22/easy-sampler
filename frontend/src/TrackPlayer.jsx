@@ -3,6 +3,7 @@ import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import WebAudioPlayer from 'wavesurfer.js/dist/webaudio.js'
 import { guess } from 'web-audio-beat-detector'
+import { transitionML } from './TransitionML'
 
 const MARKER_COLORS = [
   'rgba(255, 99, 71, 0.55)',
@@ -99,6 +100,20 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   const bpmRef = useRef(null)
   const beatOffsetRef = useRef(0)
   const [detectedBpm, setDetectedBpm] = useState(null)
+
+  // ML transition state
+  const lastFeaturesRef = useRef(null)   // features captured at last layer trigger
+  const setTransParamsRef = useRef(null) // stable ref to state setter (for use inside callbacks)
+  const setMlStatusRef = useRef(null)
+  const [transitionParams, setTransitionParams] = useState(null) // null = no trigger yet
+  const [mlStatus, setMlStatus] = useState(() => ({
+    sampleCount: transitionML.getSampleCount(),
+    ready: transitionML.isReady,
+    source: 'heuristic',
+  }))
+  // Sync stable state setters into refs so triggerLayer (no-dep callback) can call them
+  useEffect(() => { setTransParamsRef.current = setTransitionParams }, [])
+  useEffect(() => { setMlStatusRef.current = setMlStatus }, [])
 
   const [audioFile, setAudioFile] = useState(null)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -359,9 +374,29 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     // 2. Peek features for FEATURE_PEEK_MS (track plays muted while analyser collects data)
     setTimeout(() => {
       const featuresB = { ...featuresRef.current }
+      const bpmVal = bpmRef.current || 120
 
-      // 3. Pick fade params
-      const { fadeInMs, layerLevel, curve } = pickLayerParams(featuresB)
+      // 3. Pick fade params — prefer ML prediction, fall back to heuristics
+      const heuristic = pickLayerParams(featuresB)
+      const mlPred = transitionML.predict({ rms: featuresB.rms, flux: featuresB.flux, bpm: bpmVal })
+      const params = mlPred
+        ? { ...heuristic, ...mlPred, curve: mlPred.fadeInMs < 100 ? 'linear' : 'equalPower' }
+        : heuristic
+
+      const { fadeInMs, layerLevel, curve } = params
+
+      // Store features + params so the UI can display them and the user can save them
+      lastFeaturesRef.current = { rms: featuresB.rms, flux: featuresB.flux, bpm: bpmVal }
+      setTransParamsRef.current?.({
+        fadeInMs:   params.fadeInMs,
+        duckRatio:  params.duckRatio,
+        layerLevel: params.layerLevel,
+      })
+      setMlStatusRef.current?.({
+        sampleCount: transitionML.getSampleCount(),
+        ready: transitionML.isReady,
+        source: mlPred ? 'ml' : 'heuristic',
+      })
 
       // 4. Schedule fade-in for this track
       const now = audioCtx.currentTime
@@ -481,6 +516,18 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       setStatus(`No marker on key ${key} yet. Click waveform then press ${key} to place a start marker.`)
     }
   }, [triggerLayer, snapToBeat]) // triggerLayer and snapToBeat are stable (no deps), safe to include
+
+  // ── SAVE TRANSITION: add current features + (possibly user-edited) params to ML training ──
+  const saveTransition = useCallback(async () => {
+    if (!lastFeaturesRef.current || !transitionParams) return
+    transitionML.addSample(lastFeaturesRef.current, transitionParams)
+    await transitionML.train()
+    setMlStatus({
+      sampleCount: transitionML.getSampleCount(),
+      ready: transitionML.isReady,
+      source: transitionML.isReady ? 'ml' : 'heuristic',
+    })
+  }, [transitionParams])
 
   useImperativeHandle(ref, () => ({ handleKey, duck }), [handleKey, duck])
 
@@ -650,6 +697,65 @@ const TrackPlayer = forwardRef(function TrackPlayer(
           </div>
 
           <div className="status-bar">{status}</div>
+
+          {/* ── Transition Params editor (shown after first layer trigger) ── */}
+          {transitionParams && (
+            <div className="transition-params">
+              <div className="transition-params-header">
+                <span className="transition-params-title">🎛 Transition Params</span>
+                <span className={`ml-badge ml-badge--${mlStatus.source}`}>
+                  {mlStatus.source === 'ml'
+                    ? `🤖 ML (${mlStatus.sampleCount} samples)`
+                    : mlStatus.sampleCount > 0
+                      ? `⚙️ Heuristic (${mlStatus.sampleCount} saved)`
+                      : '⚙️ Heuristic'}
+                </span>
+              </div>
+              <div className="param-row">
+                <label className="param-label">Fade In</label>
+                <input
+                  type="range" min="20" max="500" step="10"
+                  value={transitionParams.fadeInMs}
+                  onChange={(e) => setTransitionParams((p) => ({ ...p, fadeInMs: +e.target.value }))}
+                  className="param-slider"
+                  aria-label="Fade-in milliseconds"
+                  aria-valuetext={`${transitionParams.fadeInMs} ms`}
+                />
+                <span className="param-value">{transitionParams.fadeInMs} ms</span>
+              </div>
+              <div className="param-row">
+                <label className="param-label">Duck Ratio</label>
+                <input
+                  type="range" min="0.3" max="1" step="0.05"
+                  value={transitionParams.duckRatio}
+                  onChange={(e) => setTransitionParams((p) => ({ ...p, duckRatio: +e.target.value }))}
+                  className="param-slider"
+                  aria-label="Duck ratio for other tracks"
+                  aria-valuetext={`${Math.round(transitionParams.duckRatio * 100)}%`}
+                />
+                <span className="param-value">{Math.round(transitionParams.duckRatio * 100)}%</span>
+              </div>
+              <div className="param-row">
+                <label className="param-label">Layer Level</label>
+                <input
+                  type="range" min="0.3" max="1" step="0.05"
+                  value={transitionParams.layerLevel}
+                  onChange={(e) => setTransitionParams((p) => ({ ...p, layerLevel: +e.target.value }))}
+                  className="param-slider"
+                  aria-label="Layer volume level"
+                  aria-valuetext={`${Math.round(transitionParams.layerLevel * 100)}%`}
+                />
+                <span className="param-value">{Math.round(transitionParams.layerLevel * 100)}%</span>
+              </div>
+              <button
+                className="btn btn-save-transition"
+                onClick={saveTransition}
+                title={`Save these params as a training example (${mlStatus.sampleCount + 1} total)`}
+              >
+                💾 Save Transition
+              </button>
+            </div>
+          )}
 
           {Object.keys(markers).length > 0 && (
             <div className="track-markers">
