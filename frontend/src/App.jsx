@@ -29,6 +29,7 @@ function App() {
   const regionsRef = useRef(null)
   const markersRef = useRef({})
   const lastInteractionRef = useRef({ time: 0, timestamp: 0 })
+  const activeLoopRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const recordedChunksRef = useRef([])
 
@@ -73,13 +74,22 @@ function App() {
       setIsLoaded(true)
       setDuration(ws.getDuration())
       setCurrentTime(0)
-      setStatus('File loaded. Click waveform to position cursor, then press 0-9 to place a marker. Press a key to jump to its marker.')
+      setStatus('File loaded. Click waveform then press 0–9 to set a start marker. Click again and press the same key to set its end marker. Press a key (without clicking) to jump and loop.')
     })
 
     ws.on('play', () => setIsPlaying(true))
     ws.on('pause', () => setIsPlaying(false))
     ws.on('finish', () => setIsPlaying(false))
-    ws.on('timeupdate', (t) => setCurrentTime(t))
+    ws.on('timeupdate', (t) => {
+      setCurrentTime(t)
+      const loopKey = activeLoopRef.current
+      if (loopKey !== null && ws.isPlaying()) {
+        const marker = markersRef.current[loopKey]
+        if (marker && marker.end !== null && t >= marker.end) {
+          ws.setTime(marker.start)
+        }
+      }
+    })
 
     ws.on('interaction', (newTime) => {
       lastInteractionRef.current = { time: Date.now(), timestamp: newTime }
@@ -113,33 +123,71 @@ function App() {
         const clickedTime = lastInteractionRef.current.timestamp
         lastInteractionRef.current = { time: 0, timestamp: 0 }
 
-        // Remove previous region for this key
-        regions.getRegions().forEach((r) => {
-          if (r.id === `marker-${key}`) r.remove()
-        })
+        const existing = markersRef.current[key]
 
-        regions.addRegion({
-          id: `marker-${key}`,
-          start: clickedTime,
-          end: clickedTime + 0.25,
-          color: MARKER_COLORS[parseInt(key)],
-          content: key,
-          drag: false,
-          resize: false,
-        })
+        if (existing && existing.end === null) {
+          // Start already set — this click sets the end
+          if (clickedTime <= existing.start) {
+            setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Click at a later time position.`)
+            return
+          }
 
-        const updated = { ...markersRef.current, [key]: clickedTime }
-        markersRef.current = updated
-        setMarkers({ ...updated })
-        setStatus(`Marker ${key} placed at ${formatTime(clickedTime)} — press ${key} to jump here.`)
+          // Replace narrow placeholder region with full start→end region
+          regions.getRegions().forEach((r) => {
+            if (r.id === `marker-${key}`) r.remove()
+          })
+
+          regions.addRegion({
+            id: `marker-${key}`,
+            start: existing.start,
+            end: clickedTime,
+            color: MARKER_COLORS[parseInt(key)],
+            content: key,
+            drag: false,
+            resize: false,
+          })
+
+          const updated = { ...markersRef.current, [key]: { start: existing.start, end: clickedTime } }
+          markersRef.current = updated
+          setMarkers({ ...updated })
+          setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(clickedTime)}. Press ${key} to jump and loop.`)
+        } else {
+          // No marker or complete marker — set new start, clear end
+          regions.getRegions().forEach((r) => {
+            if (r.id === `marker-${key}`) r.remove()
+          })
+
+          if (activeLoopRef.current === key) activeLoopRef.current = null
+
+          regions.addRegion({
+            id: `marker-${key}`,
+            start: clickedTime,
+            end: clickedTime + 0.25,
+            color: MARKER_COLORS[parseInt(key)],
+            content: key,
+            drag: false,
+            resize: false,
+          })
+
+          const updated = { ...markersRef.current, [key]: { start: clickedTime, end: null } }
+          markersRef.current = updated
+          setMarkers({ ...updated })
+          setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}. Click another spot and press ${key} again to set the end marker.`)
+        }
       } else if (markersRef.current[key] !== undefined) {
         // ── JUMP TO MARKER ──
-        const t = markersRef.current[key]
-        ws.setTime(t)
+        const marker = markersRef.current[key]
+        ws.setTime(marker.start)
         ws.play()
-        setStatus(`Jumped to marker ${key} (${formatTime(t)})`)
+        if (marker.end !== null) {
+          activeLoopRef.current = key
+          setStatus(`Jumped to marker ${key} (${formatTime(marker.start)}) — looping to ${formatTime(marker.end)}.`)
+        } else {
+          activeLoopRef.current = null
+          setStatus(`Jumped to marker ${key} (${formatTime(marker.start)}) — no end marker set yet.`)
+        }
       } else {
-        setStatus(`No marker on key ${key} yet. Click waveform then press ${key} to place one.`)
+        setStatus(`No marker on key ${key} yet. Click waveform then press ${key} to place a start marker.`)
       }
     }
 
@@ -226,6 +274,7 @@ function App() {
     regionsRef.current?.getRegions().forEach((r) => {
       if (r.id === `marker-${key}`) r.remove()
     })
+    if (activeLoopRef.current === key) activeLoopRef.current = null
     const updated = { ...markersRef.current }
     delete updated[key]
     markersRef.current = updated
@@ -272,7 +321,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>🎛 Easy Sampler</h1>
-        <p className="subtitle">Upload an MP3, place markers (0–9) and jump between them with your keyboard.</p>
+        <p className="subtitle">Upload an MP3, place loop markers (0–9) with start and end points, and jump between them with your keyboard.</p>
       </header>
 
       {/* Drop Zone */}
@@ -393,8 +442,10 @@ function App() {
         <div className="marker-section">
           <h3>Markers</h3>
           <p className="hint">
-            Click the waveform, then press a number key to place / update a marker.<br />
-            Press a number key (without clicking) to jump to that marker.
+            Click the waveform, then press a number key to set a <strong>start</strong> marker.<br />
+            Click another position and press the same key to set the <strong>end</strong> marker.<br />
+            Press a number key (without clicking) to jump to that marker's start and loop to its end.<br />
+            Pressing a key on an already-complete marker resets it so you can set a new start.
           </p>
           <div className="marker-grid">
             {Object.keys(markers)
@@ -411,7 +462,7 @@ function App() {
                   >
                     {key}
                   </span>
-                  <span className="marker-time">{formatTime(markers[key])}</span>
+                  <span className="marker-time">{formatTime(markers[key].start)}{markers[key].end !== null ? ` → ${formatTime(markers[key].end)}` : ' → ?'}</span>
                   <button
                     className="marker-remove"
                     onClick={() => clearMarker(key)}
