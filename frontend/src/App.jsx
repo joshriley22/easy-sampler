@@ -27,7 +27,11 @@ function App() {
       e.preventDefault()
       const trackIdx = KEY_TO_TRACK[key]
       const refs = [track0Ref, track1Ref, track2Ref]
-      refs[trackIdx].current?.handleKey(key)
+
+      refs[trackIdx].current?.handleKey({
+        key,
+        shiftKey: e.shiftKey,
+      })
     }
 
     window.addEventListener('keydown', handleKeyDown)

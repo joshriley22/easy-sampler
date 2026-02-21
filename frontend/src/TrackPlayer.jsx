@@ -120,10 +120,22 @@ const TrackPlayer = forwardRef(function TrackPlayer({ trackIndex, assignedKeys, 
   }, [])
 
   // ── KEY HANDLER (exposed to parent via ref) ──
-  const handleKey = useCallback((key) => {
+  const handleKey = useCallback((input) => {
     if (!isLoadedRef.current) return
 
     const ws = wavesurferRef.current
+    if (!ws) return
+
+    const key = typeof input === 'string' ? input : input.key
+    const shiftKey = typeof input === 'string' ? false : !!input.shiftKey
+
+    if (shiftKey) {
+      ws.stop()
+      activeLoopRef.current = null
+      setStatus(`Stopped (${labelRef.current}). Press ${assignedKeysRef.current.join('/')} to jump to a marker.`)
+      return
+    }
+
     const regions = regionsRef.current
     const timeSinceCursor = Date.now() - lastInteractionRef.current.time
 
