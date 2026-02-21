@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import TrackPlayer from './TrackPlayer'
 import CommunityPage from './CommunityPage'
+import { convertWebmToMp3 } from './convertWebmToMp3'
 import './App.css'
 
 const TRACKS = [
@@ -57,6 +58,7 @@ function App() {
   const recordedChunksRef = useRef([])
   const [isRecording, setIsRecording] = useState(false)
   const [recordingBlob, setRecordingBlob] = useState(null)
+  const [isConverting, setIsConverting] = useState(false)
 
   const startRecording = useCallback(() => {
     // Ensure AudioContext and MediaStreamDestination are created
@@ -83,14 +85,23 @@ function App() {
     setIsRecording(false)
   }, [])
 
-  const downloadRecording = useCallback(() => {
+  const downloadRecording = useCallback(async () => {
     if (!recordingBlob) return
-    const url = URL.createObjectURL(recordingBlob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'master-mix.webm'
-    a.click()
-    URL.revokeObjectURL(url)
+    setIsConverting(true)
+    try {
+      const mp3Blob = await convertWebmToMp3(recordingBlob)
+      const url = URL.createObjectURL(mp3Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'master-mix.mp3'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('MP3 conversion failed:', err)
+      alert('Failed to convert recording to MP3. Please try again.')
+    } finally {
+      setIsConverting(false)
+    }
   }, [recordingBlob])
 
   useEffect(() => {
@@ -174,8 +185,8 @@ function App() {
                 </button>
               )}
               {recordingBlob && (
-                <button className="btn btn-download" onClick={downloadRecording}>
-                  ⬇ Download Mix
+                <button className="btn btn-download" onClick={downloadRecording} disabled={isConverting}>
+                  {isConverting ? '⏳ Converting…' : '⬇ Download Mix'}
                 </button>
               )}
             </div>
