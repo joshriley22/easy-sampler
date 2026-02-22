@@ -255,7 +255,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       setIsLoaded(true)
       setDuration(ws.getDuration())
       setCurrentTime(0)
-      setStatus(`File loaded. Click waveform then press ${assignedKeysRef.current.join('/')} to set start/end markers.`)
+      setStatus(`File loaded. Press ${assignedKeysRef.current.join('/')} while playing to set markers, or click waveform then press a key.`)
 
       // Run beat detection on the decoded audio buffer
       const audioBuffer = ws.getDecodedData()
@@ -506,6 +506,61 @@ const TrackPlayer = forwardRef(function TrackPlayer(
         setMarkers({ ...updated })
         setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}${bpmRef.current ? ` (beat-snapped, ${bpmRef.current} BPM)` : ''}. Click another spot and press ${key} again to set the end marker.`)
       }
+    } else if (ws.isPlaying() && (markersRef.current[key] === undefined || markersRef.current[key].end === null)) {
+      // ── PLACE MARKER AT CURRENT PLAYBACK POSITION (while playing, no recent click) ──
+      const rawTime = ws.getCurrentTime()
+      const clickedTime = snapToBeat(rawTime)
+      const existing = markersRef.current[key]
+
+      if (existing && existing.end === null) {
+        // Start already set — set end at current playback position
+        const endTime = Math.abs(clickedTime - rawTime) <= END_MARKER_BEAT_SNAP_THRESHOLD_S ? clickedTime : rawTime
+        if (endTime <= existing.start) {
+          setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Wait until playback passes the start position.`)
+          return
+        }
+
+        regions.getRegions().forEach((r) => {
+          if (r.id === `marker-${key}`) r.remove()
+        })
+
+        regions.addRegion({
+          id: `marker-${key}`,
+          start: existing.start,
+          end: endTime,
+          color: MARKER_COLORS[parseInt(key)],
+          content: key,
+          drag: false,
+          resize: false,
+        })
+
+        const updated = { ...markersRef.current, [key]: { start: existing.start, end: endTime } }
+        markersRef.current = updated
+        setMarkers({ ...updated })
+        setStatus(`Marker ${key}: ${formatTime(existing.start)} → ${formatTime(endTime)}. Press ${key} to jump and loop.`)
+      } else {
+        // No marker — set start at current playback position
+        regions.getRegions().forEach((r) => {
+          if (r.id === `marker-${key}`) r.remove()
+        })
+
+        if (activeLoopRef.current === key) activeLoopRef.current = null
+
+        regions.addRegion({
+          id: `marker-${key}`,
+          start: clickedTime,
+          end: clickedTime + 0.25,
+          color: MARKER_COLORS[parseInt(key)],
+          content: key,
+          drag: false,
+          resize: false,
+        })
+
+        const updated = { ...markersRef.current, [key]: { start: clickedTime, end: null } }
+        markersRef.current = updated
+        setMarkers({ ...updated })
+        setStatus(`Marker ${key} start set at ${formatTime(clickedTime)}${bpmRef.current ? ` (beat-snapped, ${bpmRef.current} BPM)` : ''}. Press ${key} again while playing to set the end marker.`)
+      }
     } else if (markersRef.current[key] !== undefined) {
       // ── LAYER TRIGGER: jump to marker, fade in, duck others ──
       const marker = markersRef.current[key]
@@ -513,7 +568,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       triggerLayer(marker.start)
       setStatus(`Layering in at marker ${key} (${formatTime(marker.start)}) — fading in, ducking others.`)
     } else {
-      setStatus(`No marker on key ${key} yet. Click waveform then press ${key} to place a start marker.`)
+      setStatus(`No marker on key ${key} yet. Click waveform or press ${key} while playing to place a start marker.`)
     }
   }, [triggerLayer, snapToBeat]) // triggerLayer and snapToBeat are stable (no deps), safe to include
 
