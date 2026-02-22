@@ -18,10 +18,10 @@ _MP3_MAGIC = (b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2", b"\xff\xfa")
 
 S3_BUCKET = "amzn-s3-music-sample-bucket"
 
-_DB_HOST = os.environ.get("SUPABASE_DB_HOST", "db.bilewmuidvrufadoorly.supabase.co")
-_DB_PORT = int(os.environ.get("SUPABASE_DB_PORT", "5432"))
-_DB_USER = os.environ.get("SUPABASE_DB_USER", "postgres.bilewmuidvrufadoorly")
-_DB_NAME = os.environ.get("SUPABASE_DB_NAME", "postgres")
+_DB_HOST =  "db.bilewmuidvrufadoorly.supabase.co"
+_DB_PORT = "5432"
+_DB_USER = "postgres.bilewmuidvrufadoorly"
+_DB_NAME =  "postgres"
 
 
 def _get_db():
