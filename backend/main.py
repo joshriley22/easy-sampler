@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -40,7 +42,33 @@ def _get_s3():
     )
 
 
-app = FastAPI(title="Easy Sampler API")
+def _init_db():
+    """Create the songs table if it doesn't already exist."""
+    conn = _get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS songs (
+                    id        SERIAL PRIMARY KEY,
+                    title     TEXT NOT NULL,
+                    likes     INTEGER NOT NULL DEFAULT 0,
+                    song_key  TEXT NOT NULL
+                )
+                """
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(_init_db)
+    yield
+
+
+app = FastAPI(title="Easy Sampler API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
