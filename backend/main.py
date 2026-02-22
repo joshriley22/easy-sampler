@@ -47,7 +47,7 @@ app = FastAPI(title="Easy Sampler API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:4173"],
+    allow_origins=["http://localhost:5173", "http://localhost:4173", "https://easy-sampler.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import './App.css'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
 function CommunityPage() {
   const [songs, setSongs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -16,7 +18,7 @@ function CommunityPage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/songs')
+    fetch(`${API_BASE}/api/songs`)
       .then((r) => r.json())
       .then((data) => { setSongs(data); setLoading(false) })
       .catch((err) => { setError(err.message); setLoading(false) })
@@ -24,7 +26,7 @@ function CommunityPage() {
 
   const handleLike = async (id) => {
     try {
-      const res = await fetch(`/api/songs/${id}/like`, { method: 'POST' })
+      const res = await fetch(`${API_BASE}/api/songs/${id}/like`, { method: 'POST' })
       if (!res.ok) throw new Error(`Like failed (${res.status})`)
       const updated = await res.json()
       setSongs((prev) => prev.map((s) => (s.id === id ? updated : s)))
@@ -34,7 +36,7 @@ function CommunityPage() {
   }
 
   const getPresignedUrl = async (id) => {
-    const res = await fetch(`/api/songs/${id}/download-url`)
+    const res = await fetch(`${API_BASE}/api/songs/${id}/download-url`)
     if (!res.ok) throw new Error(`Could not get URL (${res.status})`)
     const { url } = await res.json()
     return url
