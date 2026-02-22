@@ -45,6 +45,12 @@ const FEATURE_PEEK_MS = 200
 // Maximum distance (seconds) from a beat for end-marker beat-snapping to apply
 const END_MARKER_BEAT_SNAP_THRESHOLD_S = 1
 
+// Waveform zoom limits and defaults (pixels per second)
+const MIN_ZOOM = 10
+const MAX_ZOOM = 2000
+const DEFAULT_ZOOM = 50
+const ZOOM_WHEEL_FACTOR = 1.15
+
 function pickLayerParams(featuresB) {
   const { rms: rmsB, flux: fluxB } = featuresB
   // Percussive (high flux) → short fade, minimal duck
@@ -120,6 +126,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   const [isPlaying, setIsPlaying] = useState(false)
   const [markers, setMarkers] = useState({})
   const [volume, setVolume] = useState(1)
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM)
+  const zoomRef = useRef(DEFAULT_ZOOM)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -255,6 +263,14 @@ const TrackPlayer = forwardRef(function TrackPlayer(
       setIsLoaded(true)
       setDuration(ws.getDuration())
       setCurrentTime(0)
+
+      // Compute and store the fit-to-container zoom level
+      const dur = ws.getDuration()
+      const containerWidth = waveformRef.current?.clientWidth ?? 400
+      const fitZoom = Math.max(MIN_ZOOM, Math.floor(containerWidth / dur))
+      zoomRef.current = fitZoom
+      setZoom(fitZoom)
+
       setStatus(`File loaded. Press ${assignedKeysRef.current.join('/')} while playing to set markers, or click waveform then press a key.`)
 
       // Run beat detection on the decoded audio buffer
@@ -339,6 +355,25 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     volumeRef.current = v
     setVolume(v)
     wavesurferRef.current?.setVolume(v)
+  }, [])
+
+  // ── ZOOM ──
+  const handleZoomChange = useCallback((e) => {
+    const z = parseInt(e.target.value)
+    zoomRef.current = z
+    setZoom(z)
+    wavesurferRef.current?.zoom(z)
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    const ws = wavesurferRef.current
+    if (!ws) return
+    const dur = ws.getDuration()
+    const containerWidth = waveformRef.current?.clientWidth ?? 400
+    const fitZoom = Math.max(MIN_ZOOM, Math.floor(containerWidth / dur))
+    zoomRef.current = fitZoom
+    setZoom(fitZoom)
+    ws.zoom(fitZoom)
   }, [])
 
   // ── Duck this track (called from App when another track layers in) ──
@@ -586,6 +621,23 @@ const TrackPlayer = forwardRef(function TrackPlayer(
 
   useImperativeHandle(ref, () => ({ handleKey, duck }), [handleKey, duck])
 
+  // ── WHEEL ZOOM: scroll on waveform zooms in/out ──
+  useEffect(() => {
+    const el = waveformRef.current
+    if (!el || !isLoaded) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? ZOOM_WHEEL_FACTOR : 1 / ZOOM_WHEEL_FACTOR
+      const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(zoomRef.current * factor)))
+      if (next === zoomRef.current) return
+      zoomRef.current = next
+      setZoom(next)
+      wavesurferRef.current?.zoom(next)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [isLoaded])
+
   // ── PLAYBACK CONTROLS ──
   const handlePlayPause = () => wavesurferRef.current?.playPause()
   const handleStop = () => {
@@ -623,6 +675,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     activeLoopRef.current = null
     setDuration(0)
     setCurrentTime(0)
+    zoomRef.current = DEFAULT_ZOOM
+    setZoom(DEFAULT_ZOOM)
     bpmRef.current = null
     beatOffsetRef.current = 0
     setDetectedBpm(null)
@@ -663,6 +717,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     activeLoopRef.current = null
     setDuration(0)
     setCurrentTime(0)
+    zoomRef.current = DEFAULT_ZOOM
+    setZoom(DEFAULT_ZOOM)
     volumeRef.current = 1
     setVolume(1)
     setStatus(`Drop or select an MP3 for ${label}.`)
@@ -709,6 +765,31 @@ const TrackPlayer = forwardRef(function TrackPlayer(
           <div className="waveform-wrapper">
             <div ref={waveformRef} className="waveform" />
           </div>
+
+          {isLoaded && (
+            <div className="zoom-control">
+              <span className="zoom-icon">🔍</span>
+              <input
+                type="range"
+                min={MIN_ZOOM}
+                max={MAX_ZOOM}
+                step="5"
+                value={zoom}
+                onChange={handleZoomChange}
+                className="zoom-slider"
+                aria-label={`Waveform zoom level for ${label}`}
+              />
+              <button
+                className="btn btn-ghost"
+                onClick={handleZoomReset}
+                title="Reset zoom to fit entire track"
+                aria-label="Reset zoom to fit"
+              >
+                ↺
+              </button>
+              <span className="zoom-value">{zoom} px/s</span>
+            </div>
+          )}
 
           <div className="track-time-volume">
             <div className="time-display">
