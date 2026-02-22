@@ -1,3 +1,5 @@
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
 python-multipart==0.0.22
+boto3==1.38.28
+psycopg2-binary==2.9.10

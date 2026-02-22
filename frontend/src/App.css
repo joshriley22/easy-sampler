@@ -652,3 +652,46 @@ body {
   color: #d0e8ff;
 }
 
+.btn-upload {
+  background: #1a3a8a;
+  border-color: #2a50aa;
+  color: #d0e0ff;
+}
+
+.btn-upload:hover:not(:disabled) {
+  background: #1e4ab0;
+  border-color: #4a80ff;
+}
+
+.upload-title-input {
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #2d4a7a;
+  background: #1c2537;
+  color: #d0dcf0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  min-width: 160px;
+}
+
+.upload-title-input:focus {
+  border-color: #4a9eff;
+}
+
+.upload-title-input:disabled {
+  opacity: 0.45;
+}
+
+.upload-success {
+  font-size: 0.88rem;
+  color: #66cc66;
+  align-self: center;
+}
+
+.community-entry-likes {
+  font-size: 0.85rem;
+  color: #8899bb;
+  flex-shrink: 0;
+}
+
