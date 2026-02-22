@@ -65,8 +65,7 @@ function CommunityPage() {
       return
     }
     try {
-      const url = await getPresignedUrl(id)
-      audio.src = url
+      audio.src = `${API_BASE}/api/songs/${id}/stream`
       await audio.play()
       setPlayingId(id)
     } catch (err) {
