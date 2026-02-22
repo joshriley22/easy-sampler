@@ -19,7 +19,7 @@ _MP3_MAGIC = (b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2", b"\xff\xfa")
 S3_BUCKET = "amzn-s3-music-sample-bucket"
 
 _DB_HOST =  "db.bilewmuidvrufadoorly.supabase.co"
-_DB_PORT = "5432"
+_DB_PORT = "6543"
 _DB_USER = "postgres.bilewmuidvrufadoorly"
 _DB_NAME =  "postgres"
 
