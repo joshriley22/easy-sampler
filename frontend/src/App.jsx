@@ -184,7 +184,7 @@ function App() {
         <main aria-live="polite">
           <p className="subtitle">
             Load up to 3 MP3s and play them simultaneously. Keys 1–3 → Track 1 · 4–6 → Track 2 · 7–9 → Track 3.
-            Triggering a marker layers that track in (with smart fade + global duck).
+            Shift+Key to stop an audio clip. Triggering a marker layers that track in (with smart fade + global duck).
           </p>
 
           <div className="tracks-grid">
