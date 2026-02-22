@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import os
 import uuid
 import shutil
@@ -39,6 +39,7 @@ def _get_s3():
         "s3",
         aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.environ.get("AWS_REGION", "us-east-1"),
     )
 
 
@@ -224,6 +225,39 @@ async def get_download_url(song_id: int):
         raise HTTPException(status_code=502, detail=f"Could not generate download URL: {exc}") from exc
 
     return JSONResponse({"url": url})
+
+
+@app.get("/api/songs/{song_id}/stream")
+async def stream_song(song_id: int):
+    """Stream the song audio through the backend, avoiding S3 CORS restrictions."""
+    try:
+        conn = _get_db()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT song_key FROM songs WHERE id = %s", (song_id,))
+                row = cur.fetchone()
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Database query failed: {exc}") from exc
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Song not found.")
+
+    s3 = _get_s3()
+    try:
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=row["song_key"])
+    except ClientError as exc:
+        raise HTTPException(status_code=502, detail=f"Could not retrieve song: {exc}") from exc
+
+    def iter_chunks():
+        for chunk in obj["Body"].iter_chunks(chunk_size=8192):
+            yield chunk
+
+    return StreamingResponse(
+        iter_chunks(),
+        media_type=obj.get("ContentType", "audio/mpeg"),
+    )
 
 
 # Serve the built React frontend when not in dev mode
