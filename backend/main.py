@@ -18,20 +18,13 @@ _MP3_MAGIC = (b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2", b"\xff\xfa")
 
 S3_BUCKET = "amzn-s3-music-sample-bucket"
 
-_DB_HOST =  "db.bilewmuidvrufadoorly.supabase.co"
-_DB_PORT = "6543"
-_DB_USER = "postgres.bilewmuidvrufadoorly"
-_DB_NAME =  "postgres"
-
-
 def _get_db():
-    db_password = os.environ.get("DB_PASSWORD", "")
     return psycopg2.connect(
-        host=_DB_HOST,
-        port=_DB_PORT,
-        dbname=_DB_NAME,
-        user=_DB_USER,
-        password=db_password,
+        host=os.environ.get("DB_HOST", "db.bilewmuidvrufadoorly.supabase.co"),
+        port=os.environ.get("DB_PORT", "6543"),
+        dbname=os.environ.get("DB_NAME", "postgres"),
+        user=os.environ.get("DB_USER", "postgres.bilewmuidvrufadoorly"),
+        password=os.environ.get("DB_PASSWORD", ""),
     )
 
 
