@@ -16,6 +16,8 @@ const KEY_TO_TRACK = {
   '7': 2, '8': 2, '9': 2,
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
 function App() {
   const [page, setPage] = useState('sampler')
   const track0Ref = useRef(null)
@@ -98,7 +100,7 @@ function App() {
       const formData = new FormData()
       formData.append('file', mp3Blob, 'master-mix.mp3')
       formData.append('title', uploadTitle.trim())
-      const res = await fetch('/api/songs', { method: 'POST', body: formData })
+      const res = await fetch(`${API_BASE}/api/songs`, { method: 'POST', body: formData })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || `Upload failed (${res.status})`)
