@@ -19,8 +19,8 @@ function CommunityPage() {
 
   useEffect(() => {
     fetch(`${API_BASE}/api/songs`)
-      .then((r) => r.json())
-      .then((data) => { setSongs(data); setLoading(false) })
+      .then((r) => { if (!r.ok) throw new Error(`Failed to fetch songs: server error (${r.status})`); return r.json() })
+      .then((data) => { setSongs(Array.isArray(data) ? data : []); setLoading(false) })
       .catch((err) => { setError(err.message); setLoading(false) })
   }, [])
 
