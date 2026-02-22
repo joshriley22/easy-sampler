@@ -271,7 +271,57 @@ body {
   line-height: 1.5;
 }
 
-/* ── Marker section ── */
+/* ── Zoom control ── */
+.zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.zoom-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #2d4a7a;
+  outline: none;
+  cursor: pointer;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a9eff;
+  cursor: pointer;
+}
+
+.zoom-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4a9eff;
+  border: none;
+  cursor: pointer;
+}
+
+.zoom-value {
+  font-size: 0.78rem;
+  color: #8899bb;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+
 .marker-section {
   background: #131720;
   border-radius: 14px;
