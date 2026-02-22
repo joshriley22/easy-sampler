@@ -159,7 +159,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🎛 Easy Sampler</h1>
+        <h1>🎛 SAMPLR</h1>
         <nav className="app-nav">
           <button
             className={`app-nav-btn${page === 'sampler' ? ' active' : ''}`}
