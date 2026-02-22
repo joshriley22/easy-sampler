@@ -8,6 +8,19 @@ body {
   min-height: 100vh;
 }
 
+/* ── Background volume circle ── */
+.bg-circle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 200, 210, 0.09) 0%, rgba(200, 200, 210, 0.03) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
+  transition: width 0.5s ease, height 0.5s ease;
+}
+
 /* ── App layout ── */
 .app {
   max-width: 960px;
