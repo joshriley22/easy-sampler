@@ -42,8 +42,10 @@ const DUCK_RETURN_S = 0.4      // time to return to full volume
 // Feature peek duration: how long (ms) to collect analyser data before scheduling fade-in
 const FEATURE_PEEK_MS = 200
 
-// Maximum distance (seconds) from a beat for end-marker beat-snapping to apply
-const END_MARKER_BEAT_SNAP_THRESHOLD_S = 1
+// Maximum distance (seconds) from a beat for beat-snapping to apply (begin and end markers)
+const BEAT_SNAP_THRESHOLD_S = 1
+// Minimum loop region duration (seconds) required for end-marker beat-snapping to apply
+const MIN_LOOP_REGION_S = 5
 
 // Waveform zoom limits and defaults (pixels per second)
 const MIN_ZOOM = 10
@@ -486,15 +488,16 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     if (timeSinceCursor < 1500) {
       // ── PLACE / UPDATE MARKER ──
       const rawTime = lastInteractionRef.current.timestamp
-      const clickedTime = snapToBeat(rawTime)
+      const snappedTime = snapToBeat(rawTime)
+      const clickedTime = Math.abs(snappedTime - rawTime) < BEAT_SNAP_THRESHOLD_S ? snappedTime : rawTime
       lastInteractionRef.current = { time: 0, timestamp: 0 }
 
       const existing = markersRef.current[key]
 
       if (existing && existing.end === null) {
         // Start already set — this click sets the end
-        // Snap to beat only if the nearest beat is within 1 second of where the user clicked
-        const endTime = Math.abs(clickedTime - rawTime) <= END_MARKER_BEAT_SNAP_THRESHOLD_S ? clickedTime : rawTime
+        // Snap to beat only if the nearest beat is < 1 second away and the region would be > 5 seconds
+        const endTime = (Math.abs(snappedTime - rawTime) < BEAT_SNAP_THRESHOLD_S && (snappedTime - existing.start) > MIN_LOOP_REGION_S) ? snappedTime : rawTime
         if (endTime <= existing.start) {
           setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Click at a later time position.`)
           return
@@ -544,12 +547,13 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     } else if (ws.isPlaying() && (markersRef.current[key] === undefined || markersRef.current[key].end === null)) {
       // ── PLACE MARKER AT CURRENT PLAYBACK POSITION (while playing, no recent click) ──
       const rawTime = ws.getCurrentTime()
-      const clickedTime = snapToBeat(rawTime)
+      const snappedTime = snapToBeat(rawTime)
+      const clickedTime = Math.abs(snappedTime - rawTime) < BEAT_SNAP_THRESHOLD_S ? snappedTime : rawTime
       const existing = markersRef.current[key]
 
       if (existing && existing.end === null) {
         // Start already set — set end at current playback position
-        const endTime = Math.abs(clickedTime - rawTime) <= END_MARKER_BEAT_SNAP_THRESHOLD_S ? clickedTime : rawTime
+        const endTime = (Math.abs(snappedTime - rawTime) < BEAT_SNAP_THRESHOLD_S && (snappedTime - existing.start) > MIN_LOOP_REGION_S) ? snappedTime : rawTime
         if (endTime <= existing.start) {
           setStatus(`End marker for key ${key} must be after the start (${formatTime(existing.start)}). Wait until playback passes the start position.`)
           return
