@@ -85,6 +85,34 @@ function App() {
     setIsRecording(false)
   }, [])
 
+  const [uploadTitle, setUploadTitle] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+
+  const uploadRecording = useCallback(async () => {
+    if (!recordingBlob || !uploadTitle.trim()) return
+    setIsUploading(true)
+    setUploadSuccess(false)
+    try {
+      const mp3Blob = await convertWebmToMp3(recordingBlob)
+      const formData = new FormData()
+      formData.append('file', mp3Blob, 'master-mix.mp3')
+      formData.append('title', uploadTitle.trim())
+      const res = await fetch('/api/songs', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Upload failed (${res.status})`)
+      }
+      setUploadSuccess(true)
+      setUploadTitle('')
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert(`Upload failed: ${err.message}`)
+    } finally {
+      setIsUploading(false)
+    }
+  }, [recordingBlob, uploadTitle])
+
   const downloadRecording = useCallback(async () => {
     if (!recordingBlob) return
     setIsConverting(true)
@@ -185,9 +213,28 @@ function App() {
                 </button>
               )}
               {recordingBlob && (
-                <button className="btn btn-download" onClick={downloadRecording} disabled={isConverting}>
-                  {isConverting ? '⏳ Converting…' : '⬇ Download Mix'}
-                </button>
+                <>
+                  <button className="btn btn-download" onClick={downloadRecording} disabled={isConverting || isUploading}>
+                    {isConverting ? '⏳ Converting…' : '⬇ Download Mix'}
+                  </button>
+                  <input
+                    className="upload-title-input"
+                    type="text"
+                    placeholder="Song title…"
+                    value={uploadTitle}
+                    onChange={(e) => { setUploadTitle(e.target.value); setUploadSuccess(false) }}
+                    disabled={isUploading}
+                    aria-label="Song title for upload"
+                  />
+                  <button
+                    className="btn btn-upload"
+                    onClick={uploadRecording}
+                    disabled={isUploading || !uploadTitle.trim()}
+                  >
+                    {isUploading ? '⏳ Uploading…' : '☁ Upload Mix'}
+                  </button>
+                  {uploadSuccess && <span className="upload-success">✔ Uploaded!</span>}
+                </>
               )}
             </div>
           </div>
