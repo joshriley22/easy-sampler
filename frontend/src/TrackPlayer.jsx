@@ -75,7 +75,7 @@ function equalPowerCurve(steps) {
 }
 
 const TrackPlayer = forwardRef(function TrackPlayer(
-  { trackIndex, assignedKeys, label, getAudioContext, getMasterGain, onLayerTrigger },
+  { trackIndex, assignedKeys, label, getAudioContext, getMasterGain, onLayerTrigger, onVolumeChange },
   ref
 ) {
   const waveformRef = useRef(null)
@@ -100,9 +100,11 @@ const TrackPlayer = forwardRef(function TrackPlayer(
   const getAudioContextRef = useRef(getAudioContext)
   const getMasterGainRef = useRef(getMasterGain)
   const onLayerTriggerRef = useRef(onLayerTrigger)
+  const onVolumeChangeRef = useRef(onVolumeChange)
   useEffect(() => { getAudioContextRef.current = getAudioContext }, [getAudioContext])
   useEffect(() => { getMasterGainRef.current = getMasterGain }, [getMasterGain])
   useEffect(() => { onLayerTriggerRef.current = onLayerTrigger }, [onLayerTrigger])
+  useEffect(() => { onVolumeChangeRef.current = onVolumeChange }, [onVolumeChange])
 
   // Beat detection state
   const bpmRef = useRef(null)
@@ -357,7 +359,8 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     volumeRef.current = v
     setVolume(v)
     wavesurferRef.current?.setVolume(v)
-  }, [])
+    onVolumeChangeRef.current?.(trackIndex, v)
+  }, [trackIndex])
 
   // ── ZOOM ──
   const handleZoomChange = useCallback((e) => {
@@ -725,6 +728,7 @@ const TrackPlayer = forwardRef(function TrackPlayer(
     setZoom(DEFAULT_ZOOM)
     volumeRef.current = 1
     setVolume(1)
+    onVolumeChangeRef.current?.(trackIndex, 1)
     setStatus(`Drop or select an MP3 for ${label}.`)
   }
 
