@@ -35,22 +35,19 @@ function CommunityPage() {
     }
   }
 
-  const getPresignedUrl = async (id) => {
-    const res = await fetch(`${API_BASE}/api/songs/${id}/download-url`)
-    if (!res.ok) throw new Error(`Could not get URL (${res.status})`)
-    const { url } = await res.json()
-    return url
-  }
-
   const handleDownload = async (id, title) => {
     try {
-      const url = await getPresignedUrl(id)
+      const res = await fetch(`${API_BASE}/api/songs/${id}/stream`)
+      if (!res.ok) throw new Error(`Download failed (${res.status})`)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
+      a.href = blobUrl
       a.download = `${title}.mp3`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
     } catch (err) {
       alert(`Download failed: ${err.message}`)
     }
