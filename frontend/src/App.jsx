@@ -24,6 +24,16 @@ function App() {
   const track1Ref = useRef(null)
   const track2Ref = useRef(null)
 
+  // ── Track volumes (for background circle) ──
+  const [trackVolumes, setTrackVolumes] = useState([1, 1, 1])
+  const handleTrackVolumeChange = useCallback((idx, vol) => {
+    setTrackVolumes((prev) => {
+      const next = [...prev]
+      next[idx] = vol
+      return next
+    })
+  }, [])
+
   // ── Shared Web Audio infrastructure ──
   const audioCtxRef = useRef(null)
   const masterGainRef = useRef(null)
@@ -156,8 +166,12 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [getAudioContext])
 
+  const circleVolume = Math.max(...trackVolumes)
+  const circleSize = Math.round(200 + circleVolume * 600)
+
   return (
     <div className="app">
+      <div className="bg-circle" style={{ width: circleSize, height: circleSize }} />
       <header className="app-header">
         <h1>🎛 SAMPLR</h1>
         <nav className="app-nav">
@@ -198,6 +212,7 @@ function App() {
                 getAudioContext={getAudioContext}
                 getMasterGain={getMasterGain}
                 onLayerTrigger={(featuresB) => onLayerTrigger(i, featuresB)}
+                onVolumeChange={handleTrackVolumeChange}
               />
             ))}
           </div>
